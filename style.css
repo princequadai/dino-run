@@ -1,6 +1,7 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 html,
@@ -44,6 +45,9 @@ body {
 
 .wrap {
   width: min(980px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 
@@ -62,10 +66,13 @@ body {
   letter-spacing: 0.5px;
 
   user-select: none;
+  margin-bottom: 6px;
 }
 
 .hint {
   opacity: 0.8;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
 }
 
 .scores {
@@ -95,7 +102,7 @@ body {
   background: #fafafa;
 
   border-bottom: 2px solid #535353;
-  border-radius: 2px;
+  border-radius: 6px;
 
   touch-action: none;
   user-select: none;
@@ -123,9 +130,10 @@ canvas {
 
   z-index: 10;
 
-  display: grid;
-  place-content: center;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 
   text-align: center;
 
@@ -133,7 +141,7 @@ canvas {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 .game-over-title {
@@ -141,7 +149,7 @@ canvas {
 
   font-family: "Courier New", monospace;
 
-  font-size: clamp(30px, 6vw, 58px);
+  font-size: clamp(26px, 6vw, 54px);
 
   font-weight: 900;
 
@@ -151,7 +159,7 @@ canvas {
 }
 
 .game-over-score {
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 
   font-family: "Courier New", monospace;
 
@@ -159,176 +167,136 @@ canvas {
 }
 
 
-/* RESTART BUTTON */
+/* RESTART BUTTON (MOVING) */
 
 .game-over button {
-  min-width: 130px;
-  min-height: 46px;
+  min-width: 140px;
+  min-height: 48px;
 
-  border: 0;
+  border: 2px solid #333;
 
-  padding: 11px 18px;
+  padding: 12px 20px;
 
   background: #535353;
   color: #fff;
 
-  border-radius: 5px;
+  border-radius: 8px;
 
   font:
-    700 14px
+    700 15px
     "Courier New",
     monospace;
 
   cursor: pointer;
 
   touch-action: manipulation;
+  transition: left 0.15s ease-out, top 0.15s ease-out, background 0.1s, transform 0.05s;
+  box-shadow: 0 4px 0 #333;
 }
 
-.game-over button:hover {
-  background: #333;
+.game-over button:hover,
+.game-over button:active {
+  background: #222;
 }
 
 .game-over button:active {
-  transform: translateY(1px);
+  transform: scale(0.95);
 }
 
 
 /* MOBILE CONTROLS */
 
 .mobile-controls {
-  position: absolute;
-
-  left: 0;
-  right: 0;
-  bottom: 12px;
-
-  z-index: 5;
-
-  display: none;
+  display: flex;
 
   align-items: center;
   justify-content: space-between;
 
-  padding: 0 12px;
+  gap: 16px;
+  margin-top: 14px;
+  width: 100%;
 
-  pointer-events: none;
+  touch-action: none;
+  user-select: none;
 }
 
 .mobile-control {
-  width: clamp(72px, 18vw, 100px);
-  height: clamp(52px, 13vw, 68px);
+  flex: 1;
+  height: clamp(52px, 14vw, 68px);
 
-  border: 2px solid rgba(83, 83, 83, 0.65);
-
+  border: 2px solid #535353;
   border-radius: 12px;
 
-  background: rgba(250, 250, 250, 0.82);
+  background: #ffffff;
 
-  color: #535353;
+  color: #333;
 
   font:
-    700 clamp(11px, 2.8vw, 14px)
+    700 clamp(14px, 4vw, 18px)
     "Courier New",
     monospace;
 
   letter-spacing: 0.5px;
 
   box-shadow:
-    0 2px 5px rgba(0, 0, 0, 0.08);
-
-  pointer-events: auto;
+    0 4px 0 #535353;
 
   touch-action: none;
-
   user-select: none;
+  cursor: pointer;
+  transition: transform 0.06s, box-shadow 0.06s, background 0.06s;
 }
 
-.mobile-control:active {
-  transform: scale(0.96);
-
-  background: rgba(83, 83, 83, 0.14);
+.mobile-control:active,
+.mobile-control.active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #535353;
+  background: #e2e2e2;
 }
 
 
-/* MOBILE */
+/* RESPONSIVE BREAKPOINTS */
 
 @media (max-width: 700px), (pointer: coarse) {
-
   body {
-    place-items: center;
-
     padding:
-      max(6px, env(safe-area-inset-top))
-      max(6px, env(safe-area-inset-right))
-      max(6px, env(safe-area-inset-bottom))
-      max(6px, env(safe-area-inset-left));
+      max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
   }
 
   .hud {
-    min-height: 30px;
-
-    font-size: clamp(9px, 2.6vw, 12px);
-
-    gap: 8px;
-  }
-
-  .hint {
-    max-width: 55%;
-
-    white-space: nowrap;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-  }
-
-  .scores {
+    min-height: 28px;
+    font-size: clamp(10px, 3vw, 13px);
     gap: 10px;
   }
 
   .game-shell {
-    min-height: 0;
+    min-height: 160px;
   }
-
-  .mobile-controls {
-    display: flex;
-  }
-
-}
-
-
-/* SMALL PHONES */
-
-@media (max-width: 430px) {
-
-  .mobile-controls {
-    bottom: 8px;
-
-    padding: 0 8px;
-  }
-
 }
 
 
 /* LANDSCAPE PHONES */
 
 @media (orientation: landscape) and (max-height: 520px) {
-
   body {
     padding: 4px 8px;
   }
 
   .hud {
-    min-height: 24px;
+    min-height: 22px;
+    margin-bottom: 2px;
   }
 
   .mobile-controls {
-    bottom: 6px;
+    margin-top: 6px;
+    gap: 10px;
   }
 
   .mobile-control {
-    width: 76px;
-    height: 48px;
+    height: 46px;
+    font-size: 14px;
   }
-
 }

@@ -1,89 +1,208 @@
 "use strict";
 
-
 /* =================================
    ELEMENTS
 ================================= */
 
-const canvas =
-  document.getElementById("gameCanvas");
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-const ctx =
-  canvas.getContext("2d");
+const scoreEl = document.getElementById("score");
+const hiScoreEl = document.getElementById("hiScore");
+const gameOverEl = document.getElementById("gameOver");
+const finalScoreEl = document.getElementById("finalScore");
+const restartBtn = document.getElementById("restartBtn");
+const startHint = document.getElementById("startHint");
 
-const scoreEl =
-  document.getElementById("score");
+const mobileJumpBtn = document.getElementById("mobileJumpBtn");
+const mobileDuckBtn = document.getElementById("mobileDuckBtn");
 
-const hiScoreEl =
-  document.getElementById("hiScore");
-
-const gameOverEl =
-  document.getElementById("gameOver");
-
-const finalScoreEl =
-  document.getElementById("finalScore");
-
-const restartBtn =
-  document.getElementById("restartBtn");
-
-const startHint =
-  document.getElementById("startHint");
-
-const gameOverSound =
-  new Audio("audio/game-over.mp3");
-
+const gameOverSound = new Audio("audio/game-over.mp3");
 gameOverSound.volume = 0.7;
-gameOverSound.loop = true;  
+gameOverSound.loop = false;
 
 
 /* =================================
-   GAME SIZE
+   AUDIO SYNTHESIZER & HAPTICS
+================================= */
+
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}
+
+function playJumpSound() {
+  initAudio();
+  if (!audioCtx) return;
+
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(160, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(480, audioCtx.currentTime + 0.08);
+
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.08);
+  } catch (e) {}
+}
+
+function playDuckSound() {
+  initAudio();
+  if (!audioCtx) return;
+
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.05);
+
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.05);
+  } catch (e) {}
+}
+
+function playMilestoneSound() {
+  initAudio();
+  if (!audioCtx) return;
+
+  try {
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(523.25, now); // C5
+    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.2);
+  } catch (e) {}
+}
+
+function playGameOverSound() {
+  initAudio();
+  try {
+    gameOverSound.currentTime = 0;
+    gameOverSound.play().catch(() => {});
+  } catch (e) {}
+
+  if (audioCtx) {
+    try {
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(280, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.35);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } catch (e) {}
+  }
+}
+
+function vibrate(ms = 15) {
+  if (navigator.vibrate) {
+    try {
+      navigator.vibrate(ms);
+    } catch (e) {}
+  }
+}
+
+
+/* =================================
+   GAME SIZE & CANVAS
 ================================= */
 
 const W = 900;
 const H = 320;
-
 const GROUND_Y = 258;
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+
+  ctx.setTransform(
+    (dpr * rect.width) / W,
+    0,
+    0,
+    (dpr * rect.height) / H,
+    0,
+    0
+  );
+
+  ctx.imageSmoothingEnabled = false;
+}
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
 
 
 /* =================================
-   PHYSICS
+   PHYSICS & GAME STATE
 ================================= */
 
 const GRAVITY = 2600;
-
 const JUMP_VELOCITY = -900;
-
-
-/* =================================
-   GAME STATE
-================================= */
 
 let running = false;
 let dead = false;
 let started = false;
 
 let lastTime = 0;
-
 let score = 0;
+let lastMilestone = 0;
 
-let highScore =
-  Number(
-    localStorage.getItem("dinoHighScore") || 0
-  );
+let highScore = Number(localStorage.getItem("dinoHighScore") || 0);
 
 let speed = 360;
-
 let spawnDistance = 480;
-
 let groundOffset = 0;
-
 let cloudOffset = 0;
-
 let nightBlend = 0;
 
 let obstacles = [];
-
 let particles = [];
 
 
@@ -92,22 +211,13 @@ let particles = [];
 ================================= */
 
 const dino = {
-
   x: 92,
-
-  y:
-    GROUND_Y - 54,
-
+  y: GROUND_Y - 54,
   w: 44,
-
   h: 54,
-
   vy: 0,
-
   duck: false,
-
   frame: 0
-
 };
 
 
@@ -116,75 +226,10 @@ const dino = {
 ================================= */
 
 const clouds = [
-
-  {
-    x: 80,
-    y: 62,
-    s: 1
-  },
-
-  {
-    x: 380,
-    y: 92,
-    s: 0.72
-  },
-
-  {
-    x: 700,
-    y: 48,
-    s: 0.85
-  }
-
+  { x: 80, y: 62, s: 1 },
+  { x: 380, y: 92, s: 0.72 },
+  { x: 700, y: 48, s: 0.85 }
 ];
-
-
-/* =================================
-   CANVAS RESIZE
-================================= */
-
-function resizeCanvas() {
-
-  const rect =
-    canvas.getBoundingClientRect();
-
-  const dpr =
-    Math.min(
-      window.devicePixelRatio || 1,
-      2
-    );
-
-  canvas.width =
-    Math.round(rect.width * dpr);
-
-  canvas.height =
-    Math.round(rect.height * dpr);
-
-
-  ctx.setTransform(
-
-    dpr * rect.width / W,
-
-    0,
-
-    0,
-
-    dpr * rect.height / H,
-
-    0,
-
-    0
-
-  );
-
-}
-
-
-window.addEventListener(
-  "resize",
-  resizeCanvas
-);
-
-resizeCanvas();
 
 
 /* =================================
@@ -192,18 +237,33 @@ resizeCanvas();
 ================================= */
 
 function updateScore() {
-
-  scoreEl.textContent =
-    String(
-      Math.floor(score)
-    ).padStart(5, "0");
+  scoreEl.textContent = String(Math.floor(score)).padStart(5, "0");
+  hiScoreEl.textContent = String(Math.floor(highScore)).padStart(5, "0");
+}
 
 
-  hiScoreEl.textContent =
-    String(
-      Math.floor(highScore)
-    ).padStart(5, "0");
+/* =================================
+   MOVING RESTART BUTTON
+================================= */
 
+let restartMoveInterval = null;
+
+function moveRestartButton() {
+  if (!gameOverEl || gameOverEl.classList.contains("hidden")) return;
+
+  const gameOverBox = gameOverEl.getBoundingClientRect();
+  const btnW = restartBtn.offsetWidth || 140;
+  const btnH = restartBtn.offsetHeight || 48;
+
+  const maxX = Math.max(10, gameOverBox.width - btnW - 30);
+  const maxY = Math.max(10, gameOverBox.height - btnH - 30);
+
+  const x = Math.floor(Math.random() * maxX) + 15;
+  const y = Math.floor(Math.random() * maxY) + 15;
+
+  restartBtn.style.position = "absolute";
+  restartBtn.style.left = `${x}px`;
+  restartBtn.style.top = `${y}px`;
 }
 
 
@@ -211,246 +271,121 @@ function updateScore() {
    RESET
 ================================= */
 
-let restartMoveInterval = null;
-
-function moveRestartButton() {
-  const gameOverBox = document.getElementById("gameOver");
-
-  const maxX = gameOverBox.clientWidth - restartBtn.offsetWidth;
-  const maxY = gameOverBox.clientHeight - restartBtn.offsetHeight;
-
-  const x = Math.random() * Math.max(0, maxX);
-  const y = Math.random() * Math.max(0, maxY);
-
-  restartBtn.style.position = "absolute";
-  restartBtn.style.left = `${x}px`;
-  restartBtn.style.top = `${y}px`;
-}
-
 function reset() {
-gameOverSound.pause();
-gameOverSound.currentTime = 0;
+  initAudio();
+  gameOverSound.pause();
+  gameOverSound.currentTime = 0;
 
-clearInterval(restartMoveInterval);
-restartMoveInterval = null;
+  clearInterval(restartMoveInterval);
+  restartMoveInterval = null;
 
-restartBtn.style.position = "";
-restartBtn.style.left = "";
-restartBtn.style.top = "";
+  restartBtn.style.position = "";
+  restartBtn.style.left = "";
+  restartBtn.style.top = "";
 
   score = 0;
-
+  lastMilestone = 0;
   speed = 360;
-
   spawnDistance = 480;
-
   groundOffset = 0;
-
   cloudOffset = 0;
-
   obstacles = [];
-
   particles = [];
-
   dead = false;
-
   started = true;
-
   running = true;
-
   nightBlend = 0;
 
-
-  dino.y =
-    GROUND_Y - dino.h;
-
+  dino.y = GROUND_Y - dino.h;
   dino.vy = 0;
-
   dino.duck = false;
 
-
-  gameOverEl.classList.add(
-    "hidden"
-  );
-
-  startHint.classList.add(
-    "hidden"
-  );
-
+  gameOverEl.classList.add("hidden");
+  startHint.classList.add("hidden");
 
   updateScore();
 
-
-  lastTime =
-    performance.now();
-
-
+  lastTime = performance.now();
   requestAnimationFrame(loop);
-
 }
 
 
 /* =================================
-   JUMP
+   JUMP & DUCK
 ================================= */
 
 function jump() {
-
-  /* Restart after death */
+  initAudio();
 
   if (dead) {
-
     reset();
-
     return;
-
   }
-
-
-  /* Start */
 
   if (!started) {
-
     reset();
-
+    return;
   }
 
-
-  /* Only jump while touching ground */
-
-  if (
-    dino.y >=
-    GROUND_Y - dino.h - 1
-  ) {
-
-    dino.vy =
-      JUMP_VELOCITY;
-
+  /* Can jump if touching or very close to ground */
+  if (dino.y >= GROUND_Y - dino.h - 2) {
+    dino.vy = JUMP_VELOCITY;
     dino.duck = false;
-
+    playJumpSound();
+    vibrate(15);
   }
-
 }
-
-
-/* =================================
-   DUCK
-================================= */
 
 function setDuck(value) {
+  initAudio();
 
-  if (
-    !running ||
-    dead
-  ) {
+  if (!running || dead) return;
 
-    return;
-
-  }
-
-
-  if (
-    value &&
-    dino.y >=
-    GROUND_Y - dino.h - 1
-  ) {
-
+  if (value) {
     dino.duck = true;
 
+    /* Fast-drop physics if in mid-air */
+    if (dino.y < GROUND_Y - dino.h - 2) {
+      dino.vy = Math.max(dino.vy, 750);
+    } else {
+      playDuckSound();
+    }
   } else {
-
     dino.duck = false;
-
   }
-
 }
 
 
 /* =================================
-   CREATE OBSTACLE
+   OBSTACLES
 ================================= */
 
 function addObstacle() {
+  const roll = Math.random();
 
-  const roll =
-    Math.random();
-
-
-  /* Flying bird */
-
-  if (
-    score > 180 &&
-    roll < 0.18
-  ) {
-
+  if (score > 180 && roll < 0.22) {
     obstacles.push({
-
       type: "bird",
-
       x: W + 20,
-
-      y:
-        GROUND_Y -
-        (
-          70 +
-          Math.floor(
-            Math.random() * 30
-          )
-        ),
-
+      y: GROUND_Y - (70 + Math.floor(Math.random() * 32)),
       w: 46,
-
       h: 26,
-
       frame: 0
-
     });
-
     return;
-
   }
 
-
-  /* Cactus */
-
-  const tall =
-    Math.random() < 0.38;
-
-
-  const count =
-    Math.random() < 0.22
-      ? 2
-      : 1;
-
+  const tall = Math.random() < 0.4;
+  const count = Math.random() < 0.25 ? 2 : 1;
 
   obstacles.push({
-
     type: "cactus",
-
     x: W + 20,
-
-    y:
-      GROUND_Y -
-      (
-        tall
-          ? 62
-          : 45
-      ),
-
-    w:
-      tall
-        ? 24
-        : 20,
-
-    h:
-      tall
-        ? 62
-        : 45,
-
+    y: GROUND_Y - (tall ? 62 : 45),
+    w: tall ? 24 : 20,
+    h: tall ? 62 : 45,
     count
-
   });
-
 }
 
 
@@ -459,23 +394,12 @@ function addObstacle() {
 ================================= */
 
 function rectHit(a, b) {
-
   return (
-
-    a.x <
-      b.x + b.w &&
-
-    a.x + a.w >
-      b.x &&
-
-    a.y <
-      b.y + b.h &&
-
-    a.y + a.h >
-      b.y
-
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
   );
-
 }
 
 
@@ -484,96 +408,39 @@ function rectHit(a, b) {
 ================================= */
 
 function die() {
-
-  if (dead) {
-    return;
-  }
-
+  if (dead) return;
 
   dead = true;
   running = false;
 
-gameOverSound.currentTime = 0;
-gameOverSound.play();
+  playGameOverSound();
+  vibrate([50, 40, 50]);
 
-clearInterval(restartMoveInterval);
+  clearInterval(restartMoveInterval);
+  moveRestartButton();
 
-moveRestartButton();
-
-restartMoveInterval = setInterval(
-  moveRestartButton,
-  150
-);
+  restartMoveInterval = setInterval(moveRestartButton, 280);
 
   dino.duck = false;
 
+  highScore = Math.max(highScore, Math.floor(score));
+  localStorage.setItem("dinoHighScore", highScore);
 
-  highScore =
-    Math.max(
-      highScore,
-      Math.floor(score)
-    );
+  finalScoreEl.textContent = String(Math.floor(score)).padStart(5, "0");
+  hiScoreEl.textContent = String(highScore).padStart(5, "0");
 
+  gameOverEl.classList.remove("hidden");
 
-  localStorage.setItem(
-    "dinoHighScore",
-    highScore
-  );
-
-
-  finalScoreEl.textContent =
-    String(
-      Math.floor(score)
-    ).padStart(5, "0");
-
-
-  hiScoreEl.textContent =
-    String(
-      highScore
-    ).padStart(5, "0");
-
-
-  gameOverEl.classList.remove(
-    "hidden"
-  );
-
-
-  /* Small impact particles */
-
-  for (
-    let i = 0;
-    i < 10;
-    i++
-  ) {
-
+  /* Impact particles */
+  for (let i = 0; i < 12; i++) {
     particles.push({
-
-      x:
-        dino.x +
-        dino.w / 2,
-
-      y:
-        dino.y +
-        dino.h / 2,
-
-      vx:
-        (
-          Math.random() -
-          0.5
-        ) * 180,
-
-      vy:
-        (
-          Math.random() -
-          0.5
-        ) * 180,
-
+      x: dino.x + dino.w / 2,
+      y: dino.y + dino.h / 2,
+      vx: (Math.random() - 0.5) * 220,
+      vy: (Math.random() - 0.5) * 220,
       life: 0.5
-
     });
-
   }
-
 }
 
 
@@ -582,1286 +449,370 @@ restartMoveInterval = setInterval(
 ================================= */
 
 function update(dt) {
+  const time = Math.min(dt, 0.032);
 
-  /*
-    Prevent huge physics jumps
-    if browser freezes briefly.
-  */
+  score += time * 10;
 
-  const time =
-    Math.min(
-      dt,
-      0.032
-    );
+  /* Score Milestone Sound & Haptics */
+  const milestone = Math.floor(score / 100);
+  if (milestone > lastMilestone && milestone > 0) {
+    lastMilestone = milestone;
+    playMilestoneSound();
+    vibrate([25, 40, 25]);
+  }
 
+  speed = Math.min(780, 360 + score * 1.05);
 
-  /* SCORE */
+  groundOffset = (groundOffset + speed * time) % 40;
+  cloudOffset = (cloudOffset + speed * time * 0.12) % (W + 200);
 
-  score +=
-    time * 10;
+  const shouldNight = Math.floor(score / 700) % 2 === 1;
+  nightBlend += ((shouldNight ? 1 : 0) - nightBlend) * Math.min(1, time * 3);
 
+  /* Dino Physics */
+  const currentGravity = dino.duck ? GRAVITY * 2.2 : GRAVITY;
+  dino.vy += currentGravity * time;
+  dino.y += dino.vy * time;
 
-  /* SPEED */
-
-  speed =
-    Math.min(
-      760,
-
-      360 +
-      score * 1.05
-
-    );
-
-
-  /* GROUND */
-
-  groundOffset =
-    (
-      groundOffset +
-      speed * time
-    ) % 40;
-
-
-  /* CLOUDS */
-
-  cloudOffset =
-    (
-      cloudOffset +
-      speed *
-      time *
-      0.12
-    ) % (W + 200);
-
-
-  /* DAY / NIGHT */
-
-  const shouldNight =
-    Math.floor(
-      score / 700
-    ) % 2 === 1;
-
-
-  nightBlend +=
-    (
-      (
-        shouldNight
-          ? 1
-          : 0
-      ) -
-      nightBlend
-    ) *
-    Math.min(
-      1,
-      time * 3
-    );
-
-
-  /* =================================
-     DINO PHYSICS
-  ================================= */
-
-  dino.vy +=
-    GRAVITY * time;
-
-
-  dino.y +=
-    dino.vy * time;
-
-
-  const groundDinoY =
-    GROUND_Y -
-    dino.h;
-
-
-  /* LAND */
-
-  if (
-    dino.y >=
-    groundDinoY
-  ) {
-
-    dino.y =
-      groundDinoY;
-
+  const groundDinoY = GROUND_Y - dino.h;
+  if (dino.y >= groundDinoY) {
+    dino.y = groundDinoY;
     dino.vy = 0;
-
   }
 
+  dino.frame += time * (speed / 45);
 
-  /* Running animation */
-
-  dino.frame +=
-    time *
-    (speed / 45);
-
-
-  /* =================================
-     SPAWN
-  ================================= */
-
-  spawnDistance -=
-    speed * time;
-
-
-  if (
-    spawnDistance <= 0
-  ) {
-
+  /* Obstacle Spawning */
+  spawnDistance -= speed * time;
+  if (spawnDistance <= 0) {
     addObstacle();
-
-
-    const gap =
-      Math.max(
-        290,
-        560 -
-        score * 0.18
-      ) +
-      Math.random() * 220;
-
-
-    spawnDistance =
-      gap;
-
+    const gap = Math.max(280, 560 - score * 0.18) + Math.random() * 220;
+    spawnDistance = gap;
   }
 
+  /* Move Obstacles */
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const obstacle = obstacles[i];
+    obstacle.x -= speed * time;
+    obstacle.frame = (obstacle.frame || 0) + time * 8;
 
-  /* =================================
-     MOVE OBSTACLES
-  ================================= */
-
-  for (
-    let i =
-      obstacles.length - 1;
-
-    i >= 0;
-
-    i--
-
-  ) {
-
-    const obstacle =
-      obstacles[i];
-
-
-    obstacle.x -=
-      speed * time;
-
-
-    obstacle.frame =
-      (
-        obstacle.frame || 0
-      ) +
-      time * 8;
-
-
-    /* Remove */
-
-    if (
-      obstacle.x +
-      obstacle.w <
-      -30
-    ) {
-
-      obstacles.splice(
-        i,
-        1
-      );
-
-      continue;
-
+    if (obstacle.x + obstacle.w < -30) {
+      obstacles.splice(i, 1);
     }
-
   }
 
-
-  /* =================================
-     COLLISION
-  ================================= */
-
+  /* Collision Detection */
   const dinoBox = {
-
-    x:
-      dino.x + 7,
-
-    y:
-      dino.duck
-        ? dino.y + 18
-        : dino.y + 5,
-
-    w:
-      dino.duck
-        ? 38
-        : 34,
-
-    h:
-      dino.duck
-        ? 36
-        : 48
-
+    x: dino.x + 7,
+    y: dino.duck ? dino.y + 18 : dino.y + 5,
+    w: dino.duck ? 38 : 34,
+    h: dino.duck ? 36 : 48
   };
 
-
-  for (
-    const obstacle
-    of obstacles
-  ) {
-
+  for (const obstacle of obstacles) {
     let obstacleBox;
-
-
-    if (
-      obstacle.type ===
-      "bird"
-    ) {
-
+    if (obstacle.type === "bird") {
       obstacleBox = {
-
-        x:
-          obstacle.x + 7,
-
-        y:
-          obstacle.y + 5,
-
-        w:
-          obstacle.w - 14,
-
-        h:
-          obstacle.h - 9
-
+        x: obstacle.x + 7,
+        y: obstacle.y + 5,
+        w: obstacle.w - 14,
+        h: obstacle.h - 9
       };
-
     } else {
-
       obstacleBox = {
-
-        x:
-          obstacle.x + 3,
-
-        y:
-          obstacle.y + 3,
-
-        w:
-          obstacle.w -
-          6 +
-          (
-            obstacle.count -
-            1
-          ) * 13,
-
-        h:
-          obstacle.h - 4
-
+        x: obstacle.x + 3,
+        y: obstacle.y + 3,
+        w: obstacle.w - 6 + (obstacle.count - 1) * 13,
+        h: obstacle.h - 4
       };
-
     }
 
-
-    if (
-      rectHit(
-        dinoBox,
-        obstacleBox
-      )
-    ) {
-
+    if (rectHit(dinoBox, obstacleBox)) {
       die();
-
       break;
-
     }
-
   }
 
+  /* Update Particles */
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * time;
+    p.y += p.vy * time;
+    p.vy += 500 * time;
+    p.life -= time;
 
-  /* =================================
-     PARTICLES
-  ================================= */
-
-  for (
-    let i =
-      particles.length - 1;
-
-    i >= 0;
-
-    i--
-
-  ) {
-
-    const p =
-      particles[i];
-
-
-    p.x +=
-      p.vx * time;
-
-
-    p.y +=
-      p.vy * time;
-
-
-    p.vy +=
-      500 * time;
-
-
-    p.life -=
-      time;
-
-
-    if (
-      p.life <= 0
-    ) {
-
-      particles.splice(
-        i,
-        1
-      );
-
+    if (p.life <= 0) {
+      particles.splice(i, 1);
     }
-
   }
-
 
   updateScore();
-
 }
 
 
 /* =================================
-   PIXEL RECT
+   DRAW HELPERS
 ================================= */
 
-function pixelRect(
-  x,
-  y,
-  w,
-  h,
-  fill = "#222"
-) {
-
-  ctx.fillStyle =
-    fill;
-
-  ctx.fillRect(
-    Math.round(x),
-    Math.round(y),
-    w,
-    h
-  );
-
+function pixelRect(x, y, w, h, fill = "#222") {
+  ctx.fillStyle = fill;
+  ctx.fillRect(Math.round(x), Math.round(y), w, h);
 }
-
-
-/* =================================
-   DRAW DINO
-================================= */
 
 function drawDino() {
-
-  const x =
-    dino.x;
-
-  const y =
-    dino.y;
-
-
-  /* DUCKING */
+  const x = dino.x;
+  const y = dino.y;
 
   if (dino.duck) {
-
-    pixelRect(
-      x + 4,
-      y + 19,
-      42,
-      22
-    );
-
-    pixelRect(
-      x + 35,
-      y + 10,
-      20,
-      20
-    );
-
-    pixelRect(
-      x + 50,
-      y + 18,
-      8,
-      7
-    );
-
-    pixelRect(
-      x + 46,
-      y + 13,
-      4,
-      4,
-      "#fff"
-    );
-
-    pixelRect(
-      x + 10,
-      y + 39,
-      8,
-      5
-    );
-
-    pixelRect(
-      x + 32,
-      y + 39,
-      8,
-      5
-    );
-
+    pixelRect(x + 4, y + 19, 42, 22);
+    pixelRect(x + 35, y + 10, 20, 20);
+    pixelRect(x + 50, y + 18, 8, 7);
+    pixelRect(x + 46, y + 13, 4, 4, "#fff");
+    pixelRect(x + 10, y + 39, 8, 5);
+    pixelRect(x + 32, y + 39, 8, 5);
     return;
-
   }
 
+  /* Body */
+  pixelRect(x + 13, y + 17, 25, 30);
+  /* Head */
+  pixelRect(x + 23, y + 7, 23, 23);
+  /* Snout */
+  pixelRect(x + 40, y + 14, 12, 7);
+  /* Tail */
+  pixelRect(x + 4, y + 31, 14, 7);
+  pixelRect(x + 8, y + 27, 8, 8);
+  /* Eye */
+  pixelRect(x + 26, y + 7, 5, 5, "#fff");
 
-  /* BODY */
-
-  pixelRect(
-    x + 13,
-    y + 17,
-    25,
-    30
-  );
-
-
-  /* HEAD */
-
-  pixelRect(
-    x + 23,
-    y + 7,
-    23,
-    23
-  );
-
-
-  /* SNOUT */
-
-  pixelRect(
-    x + 40,
-    y + 14,
-    12,
-    7
-  );
-
-
-  /* TAIL */
-
-  pixelRect(
-    x + 4,
-    y + 31,
-    14,
-    7
-  );
-
-  pixelRect(
-    x + 8,
-    y + 27,
-    8,
-    8
-  );
-
-
-  /* EYE */
-
-  pixelRect(
-    x + 26,
-    y + 7,
-    5,
-    5,
-    "#fff"
-  );
-
-
-  /* LEGS */
-
-  const step =
-    Math.floor(
-      dino.frame
-    ) % 2;
-
-
+  /* Legs */
+  const step = Math.floor(dino.frame) % 2;
   if (step === 0) {
-
-    pixelRect(
-      x + 15,
-      y + 45,
-      7,
-      13
-    );
-
-    pixelRect(
-      x + 31,
-      y + 44,
-      7,
-      10
-    );
-
+    pixelRect(x + 15, y + 45, 7, 13);
+    pixelRect(x + 31, y + 44, 7, 10);
   } else {
-
-    pixelRect(
-      x + 15,
-      y + 44,
-      7,
-      10
-    );
-
-    pixelRect(
-      x + 31,
-      y + 45,
-      7,
-      13
-    );
-
+    pixelRect(x + 15, y + 44, 7, 10);
+    pixelRect(x + 31, y + 45, 7, 13);
   }
-
 }
-
-
-/* =================================
-   DRAW CACTUS
-================================= */
 
 function drawCactus(o) {
+  const x = o.x;
+  const y = o.y;
 
-  const x =
-    o.x;
+  pixelRect(x + 7, y, 9, o.h, "#2f6b3f");
+  pixelRect(x + 2, y + 15, 8, 7, "#2f6b3f");
+  pixelRect(x - 1, y + 12, 7, 16, "#2f6b3f");
 
-  const y =
-    o.y;
-
-
-  pixelRect(
-    x + 7,
-    y,
-    9,
-    o.h,
-    "#2f6b3f"
-  );
-
-
-  /* LEFT ARM */
-
-  pixelRect(
-    x + 2,
-    y + 15,
-    8,
-    7,
-    "#2f6b3f"
-  );
-
-  pixelRect(
-    x - 1,
-    y + 12,
-    7,
-    16,
-    "#2f6b3f"
-  );
-
-
-  /* RIGHT ARM */
-
-  if (
-    o.h > 50
-  ) {
-
-    pixelRect(
-      x + 16,
-      y + 24,
-      8,
-      7,
-      "#2f6b3f"
-    );
-
-    pixelRect(
-      x + 18,
-      y + 20,
-      7,
-      18,
-      "#2f6b3f"
-    );
-
+  if (o.h > 50) {
+    pixelRect(x + 16, y + 24, 8, 7, "#2f6b3f");
+    pixelRect(x + 18, y + 20, 7, 18, "#2f6b3f");
   }
 
-
-  /* DOUBLE CACTUS */
-
-  if (
-    o.count === 2
-  ) {
-
-    pixelRect(
-      x + 28,
-      y + 13,
-      9,
-      o.h - 13,
-      "#2f6b3f"
-    );
-
-    pixelRect(
-      x + 35,
-      y + 29,
-      8,
-      7,
-      "#2f6b3f"
-    );
-
+  if (o.count === 2) {
+    pixelRect(x + 28, y + 13, 9, o.h - 13, "#2f6b3f");
+    pixelRect(x + 35, y + 29, 8, 7, "#2f6b3f");
   }
-
 }
-
-
-/* =================================
-   DRAW BIRD
-================================= */
 
 function drawBird(o) {
+  const flap = Math.floor(o.frame) % 2;
 
-  const flap =
-    Math.floor(
-      o.frame
-    ) % 2;
-
-
-  /* BODY */
-
-  pixelRect(
-    o.x + 13,
-    o.y + 9,
-    24,
-    10,
-    "#555"
-  );
-
-
-  /* HEAD */
-
-  pixelRect(
-    o.x + 35,
-    o.y + 7,
-    8,
-    8,
-    "#555"
-  );
-
-
-  /* BEAK */
-
-  pixelRect(
-    o.x + 42,
-    o.y + 10,
-    6,
-    3,
-    "#555"
-  );
-
-
-  /* WING */
+  pixelRect(o.x + 13, o.y + 9, 24, 10, "#555");
+  pixelRect(o.x + 35, o.y + 7, 8, 8, "#555");
+  pixelRect(o.x + 42, o.y + 10, 6, 3, "#555");
 
   if (flap) {
-
-    pixelRect(
-      o.x + 5,
-      o.y + 3,
-      16,
-      6,
-      "#555"
-    );
-
-    pixelRect(
-      o.x + 9,
-      o.y - 1,
-      8,
-      5,
-      "#555"
-    );
-
+    pixelRect(o.x + 5, o.y + 3, 16, 6, "#555");
+    pixelRect(o.x + 9, o.y - 1, 8, 5, "#555");
   } else {
-
-    pixelRect(
-      o.x + 5,
-      o.y + 15,
-      16,
-      6,
-      "#555"
-    );
-
+    pixelRect(o.x + 5, o.y + 15, 16, 6, "#555");
   }
-
 }
-
-
-/* =================================
-   DRAW CLOUD
-================================= */
 
 function drawCloud(c) {
+  let x = c.x - cloudOffset;
+  if (x < -120) x += W + 200;
 
-  let x =
-    c.x -
-    cloudOffset;
-
-
-  if (
-    x < -120
-  ) {
-
-    x +=
-      W + 200;
-
-  }
-
-
-  ctx.fillStyle =
-    "#d9d9d9";
-
-
-  ctx.fillRect(
-    x,
-    c.y + 10,
-    64 * c.s,
-    12 * c.s
-  );
-
+  ctx.fillStyle = "#d9d9d9";
+  ctx.fillRect(x, c.y + 10, 64 * c.s, 12 * c.s);
 
   ctx.beginPath();
-
-
-  ctx.arc(
-    x + 20 * c.s,
-    c.y + 10,
-    15 * c.s,
-    Math.PI,
-    0
-  );
-
-
-  ctx.arc(
-    x + 38 * c.s,
-    c.y + 7,
-    19 * c.s,
-    Math.PI,
-    0
-  );
-
-
+  ctx.arc(x + 20 * c.s, c.y + 10, 15 * c.s, Math.PI, 0);
+  ctx.arc(x + 38 * c.s, c.y + 7, 19 * c.s, Math.PI, 0);
   ctx.fill();
-
 }
-
-
-/* =================================
-   BACKGROUND
-================================= */
 
 function drawBackground() {
+  const b = nightBlend;
 
-  const b =
-    nightBlend;
+  ctx.fillStyle = `rgb(${250 - b * 208}, ${250 - b * 208}, ${246 - b * 190})`;
+  ctx.fillRect(0, 0, W, H);
 
+  clouds.forEach(drawCloud);
 
-  /* Background */
-
-  ctx.fillStyle =
-    `rgb(
-      ${250 - b * 208},
-      ${250 - b * 208},
-      ${246 - b * 190}
-    )`;
-
-
-  ctx.fillRect(
-    0,
-    0,
-    W,
-    H
-  );
-
-
-  /* Clouds */
-
-  clouds.forEach(
-    drawCloud
-  );
-
-
-  /* Moon */
-
-  if (
-    nightBlend > 0.1
-  ) {
-
-    ctx.fillStyle =
-      "#eee";
-
-
+  if (nightBlend > 0.1) {
+    ctx.fillStyle = "#eee";
     ctx.beginPath();
-
-    ctx.arc(
-      760,
-      62,
-      18,
-      0,
-      Math.PI * 2
-    );
-
+    ctx.arc(760, 62, 18, 0, Math.PI * 2);
     ctx.fill();
 
-
-    ctx.fillStyle =
-      `rgba(
-        250,
-        250,
-        246,
-        ${nightBlend}
-      )`;
-
-
+    ctx.fillStyle = `rgba(250, 250, 246, ${nightBlend})`;
     ctx.beginPath();
-
-    ctx.arc(
-      768,
-      56,
-      17,
-      0,
-      Math.PI * 2
-    );
-
+    ctx.arc(768, 56, 17, 0, Math.PI * 2);
     ctx.fill();
-
   }
 
-
-  /* Ground line */
-
-  ctx.strokeStyle =
-    "#333";
-
+  ctx.strokeStyle = "#333";
   ctx.lineWidth = 2;
-
-
   ctx.beginPath();
-
-  ctx.moveTo(
-    0,
-    GROUND_Y
-  );
-
-  ctx.lineTo(
-    W,
-    GROUND_Y
-  );
-
+  ctx.moveTo(0, GROUND_Y);
+  ctx.lineTo(W, GROUND_Y);
   ctx.stroke();
 
-
-  /* Small ground marks */
-
-  ctx.fillStyle =
-    "#666";
-
-
-  for (
-    let x =
-      -groundOffset;
-
-    x < W;
-
-    x += 40
-
-  ) {
-
-    ctx.fillRect(
-      x,
-      GROUND_Y + 16,
-      2,
-      2
-    );
-
+  ctx.fillStyle = "#666";
+  for (let x = -groundOffset; x < W; x += 40) {
+    ctx.fillRect(x, GROUND_Y + 16, 2, 2);
   }
 
-
-  for (
-    let x =
-      20 -
-      groundOffset * 0.7;
-
-    x < W;
-
-    x += 77
-
-  ) {
-
-    ctx.fillRect(
-      x,
-      GROUND_Y + 8,
-      8,
-      2
-    );
-
+  for (let x = 20 - groundOffset * 0.7; x < W; x += 77) {
+    ctx.fillRect(x, GROUND_Y + 8, 8, 2);
   }
-
 }
-
-
-/* =================================
-   DRAW
-================================= */
 
 function draw() {
-
-  ctx.clearRect(
-    0,
-    0,
-    W,
-    H
-  );
-
-
+  ctx.clearRect(0, 0, W, H);
   drawBackground();
-
-
-  /* Obstacles */
-
-  obstacles.forEach(
-    obstacle => {
-
-      if (
-        obstacle.type ===
-        "bird"
-      ) {
-
-        drawBird(
-          obstacle
-        );
-
-      } else {
-
-        drawCactus(
-          obstacle
-        );
-
-      }
-
-    }
-  );
-
-
-  /* Dino */
-
+  obstacles.forEach(o => (o.type === "bird" ? drawBird(o) : drawCactus(o)));
   drawDino();
 
-
-  /* Particles */
-
-  particles.forEach(
-    p => {
-
-      ctx.globalAlpha =
-        Math.max(
-          0,
-          p.life * 2
-        );
-
-
-      pixelRect(
-        p.x,
-        p.y,
-        3,
-        3,
-        "#555"
-      );
-
-    }
-  );
-
-
+  particles.forEach(p => {
+    ctx.globalAlpha = Math.max(0, p.life * 2);
+    pixelRect(p.x, p.y, 3, 3, "#555");
+  });
   ctx.globalAlpha = 1;
-
 }
-
-
-/* =================================
-   GAME LOOP
-================================= */
 
 function loop(now) {
-
   if (!running) {
-
     draw();
-
     return;
-
   }
 
-
-  const dt =
-    (now - lastTime) /
-    1000;
-
-
+  const dt = (now - lastTime) / 1000;
   lastTime = now;
 
-
   update(dt);
-
   draw();
 
-
   if (running) {
-
-    requestAnimationFrame(
-      loop
-    );
-
+    requestAnimationFrame(loop);
   }
-
 }
 
 
 /* =================================
-   KEYBOARD CONTROLS
+   INPUT CONTROLS
 ================================= */
 
-window.addEventListener(
-  "keydown",
-  event => {
-
-    /* Jump */
-
-    if (
-      event.code ===
-        "Space" ||
-
-      event.code ===
-        "ArrowUp"
-    ) {
-
-      event.preventDefault();
-
-      jump();
-
-    }
-
-
-    /* Duck */
-
-    if (
-      event.code ===
-      "ArrowDown"
-    ) {
-
-      event.preventDefault();
-
-      setDuck(true);
-
-    }
-
+/* Keyboard */
+window.addEventListener("keydown", event => {
+  if (event.code === "Space" || event.code === "ArrowUp") {
+    event.preventDefault();
+    jump();
   }
-);
-
-
-/* =================================
-   KEY RELEASE
-================================= */
-
-window.addEventListener(
-  "keyup",
-  event => {
-
-    if (
-      event.code ===
-      "ArrowDown"
-    ) {
-
-      setDuck(false);
-
-    }
-
+  if (event.code === "ArrowDown") {
+    event.preventDefault();
+    setDuck(true);
   }
-);
+});
 
-
-// /* =================================
-//    MOUSE / TOUCH
-// ================================= */
-
-// canvas.addEventListener(
-//   "pointerdown",
-//   event => {
-
-//     event.preventDefault();
-
-//     jump();
-
-//   }
-// );
-
-```javascript
-/* =================================
-   MOUSE / TOUCH
-================================= */
-
-canvas.addEventListener(
-  "pointerdown",
-  event => {
-
-    if (
-      event.pointerType === "mouse" ||
-      event.pointerType === "touch" ||
-      event.pointerType === "pen"
-    ) {
-
-      event.preventDefault();
-
-      jump();
-
-    }
-
+window.addEventListener("keyup", event => {
+  if (event.code === "ArrowDown") {
+    setDuck(false);
   }
-);
+});
 
+/* Canvas Pointer / Touch & Swipe */
+let touchStartY = 0;
+let touchStartX = 0;
 
-function bindMobileButton(button, action) {
-
-  if (!button) {
+canvas.addEventListener("pointerdown", event => {
+  initAudio();
+  if (dead || !started) {
+    reset();
     return;
   }
 
+  touchStartX = event.clientX;
+  touchStartY = event.clientY;
 
-  button.addEventListener(
-    "pointerdown",
-    event => {
+  jump();
+});
 
-      event.preventDefault();
-      event.stopPropagation();
+canvas.addEventListener("pointerup", event => {
+  const deltaY = event.clientY - touchStartY;
+  const deltaX = event.clientX - touchStartX;
 
-      if (button === mobileDuckBtn) {
+  /* Swipe Down to Duck */
+  if (deltaY > 35 && Math.abs(deltaY) > Math.abs(deltaX)) {
+    setDuck(true);
+    setTimeout(() => setDuck(false), 450);
+  }
+});
 
-        setDuck(true);
+/* Mobile Buttons */
+function bindMobileButton(btn, onDown, onUp) {
+  if (!btn) return;
 
-      } else {
+  const handleDown = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    initAudio();
+    btn.classList.add("active");
+    if (onDown) onDown();
+  };
 
-        action();
+  const handleUp = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    btn.classList.remove("active");
+    if (onUp) onUp();
+  };
 
-      }
+  btn.addEventListener("pointerdown", handleDown, { passive: false });
+  btn.addEventListener("pointerup", handleUp, { passive: false });
+  btn.addEventListener("pointercancel", handleUp, { passive: false });
+  btn.addEventListener("pointerleave", handleUp, { passive: false });
+}
 
+bindMobileButton(mobileJumpBtn, () => jump(), null);
+bindMobileButton(mobileDuckBtn, () => setDuck(true), () => setDuck(false));
 
-      try {
+/* Moving Restart Button Handlers */
+if (restartBtn) {
+  restartBtn.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    reset();
+  });
 
-        button.setPointerCapture(
-          event.pointerId
-        );
+  restartBtn.addEventListener("pointerenter", () => {
+    if (dead) moveRestartButton();
+  });
+}
 
-      } catch (error) {}
-
-    },
-    {
-      passive: false
-    }
-  );
-
-
-  button.addEventListener(
-    "pointerup",
-    event => {
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (
-        button === mobileDuckBtn
-      ) {
-
-        setDuck(false);
-
-      }
-
-    },
-    {
-      passive: false
-    }
-  );
-
-
-  button.addEventListener(
-    "pointercancel",
-    event => {
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (
-        button === mobileDuckBtn
-      ) {
-
-        setDuck(false);
-
-      }
-
-    },
-    {
-      passive: false
-    }
-  );
-
-
-  button.addEventListener(
-    "pointerleave",
-    event => {
-
-      if (
-        button === mobileDuckBtn &&
-        event.pointerType !== "mouse"
-      ) {
-
-        setDuck(false);
-
-      }
-
-    }
-  );
-
+/* Adjust hint text based on touch capability */
+const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+if (isTouchDevice && startHint) {
+  startHint.textContent = "TAP CANVAS OR BUTTONS TO PLAY";
 }
 
 
-bindMobileButton(
-  mobileJumpBtn,
-  jump
-);
-
-
-bindMobileButton(
-  mobileDuckBtn,
-  () => {}
-);
-```
-
-
-
 /* =================================
-   RESTART BUTTON
+   INITIAL SETUP
 ================================= */
 
-restartBtn.addEventListener(
-  "click",
-  reset
-);
-
-
-/* =================================
-   INITIALIZE
-================================= */
-
-hiScoreEl.textContent =
-  String(
-    highScore
-  ).padStart(
-    5,
-    "0"
-  );
-
+hiScoreEl.textContent = String(highScore).padStart(5, "0");
 updateScore();
-
 draw();
