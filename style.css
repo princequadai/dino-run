@@ -216,7 +216,11 @@ canvas {
 /* STATIC RESTART BUTTON */
 
 #restartBtn {
-  position: relative;
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
 
   display: inline-flex;
   align-items: center;

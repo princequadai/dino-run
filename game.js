@@ -268,6 +268,7 @@ function reset() {
   dino.vy = 0;
   dino.duck = false;
 
+  if (restartBtn) restartBtn.removeAttribute("style");
   gameOverEl.classList.add("hidden");
   startHint.classList.add("hidden");
 
@@ -392,6 +393,7 @@ function die() {
   finalScoreEl.textContent = String(Math.floor(score)).padStart(5, "0");
   hiScoreEl.textContent = String(highScore).padStart(5, "0");
 
+  if (restartBtn) restartBtn.removeAttribute("style");
   gameOverEl.classList.remove("hidden");
 
   /* Impact particles */
