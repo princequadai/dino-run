@@ -12,7 +12,6 @@ const scoreEl = document.getElementById("score");
 const hiScoreEl = document.getElementById("hiScore");
 const gameOverEl = document.getElementById("gameOver");
 const restartBtn = document.getElementById("restartBtn");
-const startHint = document.getElementById("startHint");
 
 const touchLeft = document.getElementById("touchLeft");
 const touchRight = document.getElementById("touchRight");
@@ -264,7 +263,6 @@ function reset() {
 
   if (restartBtn) restartBtn.removeAttribute("style");
   gameOverEl.classList.add("hidden");
-  startHint.classList.add("hidden");
 
   updateScore();
 
@@ -695,12 +693,6 @@ if (restartBtn) {
     e.stopPropagation();
     reset();
   });
-}
-
-/* Adjust hint text for touch screens */
-const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-if (isTouchDevice && startHint) {
-  startHint.textContent = "TAP RIGHT TO JUMP • LEFT TO DUCK";
 }
 
 
