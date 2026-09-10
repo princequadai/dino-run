@@ -8,17 +8,11 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
   >
 
-  <meta name="theme-color" content="#12151e">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#f7f7f7">
 
-  <title>Dino Run — Mobile Arcade</title>
+  <title>Dino Run</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="style.css?v=2.2">
+  <link rel="stylesheet" href="style.css?v=3.0">
 </head>
 
 <body>
@@ -26,73 +20,43 @@
   <main class="wrap">
 
     <header class="hud">
-      <div class="logo-title">
-        <span class="dino-icon">🦖</span>
-        <span class="app-name">DINO RUN</span>
+      <div class="hint" id="startHint">
+        TAP RIGHT TO JUMP • TAP LEFT TO DUCK
       </div>
 
       <div class="scores">
-        <div class="score-badge hi-badge">
-          <span class="label">HI</span>
-          <span class="val" id="hiScore">00000</span>
-        </div>
-
-        <div class="score-badge cur-badge">
-          <span class="label">SCORE</span>
-          <span class="val" id="score">00000</span>
-        </div>
+        <span>HI <b id="hiScore">00000</b></span>
+        <span><b id="score">00000</b></span>
       </div>
     </header>
-
-    <div class="hint-bar" id="startHint">
-      TAP SCREEN OR BUTTONS TO PLAY
-    </div>
 
     <section class="game-shell" id="gameShell" aria-label="Dino endless runner">
 
       <canvas id="gameCanvas"></canvas>
 
       <div id="gameOver" class="game-over hidden">
-        <div class="game-over-card">
-          <div class="game-over-title">GAME OVER</div>
-          <div class="game-over-score">
-            FINAL SCORE <span id="finalScore">00000</span>
-          </div>
-          <button id="restartBtn" type="button">
-            <span class="btn-icon">↻</span> PLAY AGAIN
+        <div class="game-over-content">
+          <div class="game-over-title">G A M E   O V E R</div>
+          <button id="restartBtn" type="button" aria-label="Restart game">
+            ↻
           </button>
+        </div>
+      </div>
+
+      <div id="touchOverlay" class="touch-overlay">
+        <div id="touchLeft" class="touch-zone touch-left">
+          <span class="zone-label">DUCK</span>
+        </div>
+        <div id="touchRight" class="touch-zone touch-right">
+          <span class="zone-label">JUMP</span>
         </div>
       </div>
 
     </section>
 
-    <div id="mobileControls" class="mobile-controls" aria-label="Touch controls">
-
-      <button
-        id="mobileDuckBtn"
-        class="mobile-control duck-control"
-        type="button"
-        aria-label="Hold to duck"
-      >
-        <span class="control-arrow">⬇</span>
-        <span class="control-text">DUCK</span>
-      </button>
-
-      <button
-        id="mobileJumpBtn"
-        class="mobile-control jump-control"
-        type="button"
-        aria-label="Jump"
-      >
-        <span class="control-arrow">⬆</span>
-        <span class="control-text">JUMP</span>
-      </button>
-
-    </div>
-
   </main>
 
-  <script src="game.js?v=2.2"></script>
+  <script src="game.js?v=3.0"></script>
 
 </body>
 </html>

@@ -15,8 +15,8 @@ const finalScoreEl = document.getElementById("finalScore");
 const restartBtn = document.getElementById("restartBtn");
 const startHint = document.getElementById("startHint");
 
-const mobileJumpBtn = document.getElementById("mobileJumpBtn");
-const mobileDuckBtn = document.getElementById("mobileDuckBtn");
+const touchLeft = document.getElementById("touchLeft");
+const touchRight = document.getElementById("touchRight");
 
 const gameOverSound = new Audio("audio/game-over.mp3");
 gameOverSound.volume = 0.7;
@@ -166,14 +166,10 @@ function resizeCanvas() {
   canvas.width = Math.round(rect.width * dpr);
   canvas.height = Math.round(rect.height * dpr);
 
-  ctx.setTransform(
-    (dpr * rect.width) / W,
-    0,
-    0,
-    (dpr * rect.height) / H,
-    0,
-    0
-  );
+  const scaleX = (dpr * rect.width) / W;
+  const scaleY = (dpr * rect.height) / H;
+
+  ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
 
   ctx.imageSmoothingEnabled = false;
 }
@@ -702,88 +698,60 @@ window.addEventListener("keyup", event => {
   }
 });
 
-/* Canvas Touch & Swipe */
-let touchStartY = 0;
-let touchStartX = 0;
-
-function handleCanvasDown(e) {
+/* Touch Zones: Left = Duck, Right = Jump */
+function handleTouchZone(e, isLeft, isDown) {
+  if (e.cancelable) e.preventDefault();
+  e.stopPropagation();
   initAudio();
-  if (dead || !started) {
-    reset();
-    return;
-  }
 
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  if (isDown) {
+    if (dead || !started) {
+      reset();
+      return;
+    }
 
-  touchStartX = clientX;
-  touchStartY = clientY;
-
-  jump();
-}
-
-canvas.addEventListener("touchstart", e => {
-  e.preventDefault();
-  handleCanvasDown(e);
-}, { passive: false });
-
-canvas.addEventListener("pointerdown", e => {
-  if (e.pointerType !== "touch") {
-    handleCanvasDown(e);
-  }
-});
-
-function handleCanvasUp(e) {
-  const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-  const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-
-  const deltaY = clientY - touchStartY;
-  const deltaX = clientX - touchStartX;
-
-  /* Swipe Down to Duck */
-  if (deltaY > 35 && Math.abs(deltaY) > Math.abs(deltaX)) {
-    setDuck(true);
-    setTimeout(() => setDuck(false), 450);
+    if (isLeft) {
+      setDuck(true);
+      if (touchLeft) touchLeft.classList.add("active");
+    } else {
+      jump();
+      if (touchRight) touchRight.classList.add("active");
+    }
+  } else {
+    if (isLeft) {
+      setDuck(false);
+      if (touchLeft) touchLeft.classList.remove("active");
+    } else {
+      if (touchRight) touchRight.classList.remove("active");
+    }
   }
 }
 
-canvas.addEventListener("touchend", handleCanvasUp, { passive: true });
-
-/* Mobile Control Buttons */
-function bindMobileButton(btn, onDown, onUp) {
-  if (!btn) return;
-
-  const handleDown = (e) => {
-    if (e.cancelable) e.preventDefault();
-    e.stopPropagation();
-    initAudio();
-    btn.classList.add("active");
-    if (onDown) onDown();
-  };
-
-  const handleUp = (e) => {
-    if (e.cancelable) e.preventDefault();
-    e.stopPropagation();
-    btn.classList.remove("active");
-    if (onUp) onUp();
-  };
-
-  btn.addEventListener("touchstart", handleDown, { passive: false });
-  btn.addEventListener("touchend", handleUp, { passive: false });
-  btn.addEventListener("touchcancel", handleUp, { passive: false });
-
-  btn.addEventListener("pointerdown", e => {
-    if (e.pointerType !== "touch") handleDown(e);
+if (touchLeft) {
+  touchLeft.addEventListener("touchstart", e => handleTouchZone(e, true, true), { passive: false });
+  touchLeft.addEventListener("touchend", e => handleTouchZone(e, true, false), { passive: false });
+  touchLeft.addEventListener("touchcancel", e => handleTouchZone(e, true, false), { passive: false });
+  touchLeft.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "touch") handleTouchZone(e, true, true);
   });
-  btn.addEventListener("pointerup", e => {
-    if (e.pointerType !== "touch") handleUp(e);
+  touchLeft.addEventListener("pointerup", e => {
+    if (e.pointerType !== "touch") handleTouchZone(e, true, false);
   });
 }
 
-bindMobileButton(mobileJumpBtn, () => jump(), null);
-bindMobileButton(mobileDuckBtn, () => setDuck(true), () => setDuck(false));
+if (touchRight) {
+  touchRight.addEventListener("touchstart", e => handleTouchZone(e, false, true), { passive: false });
+  touchRight.addEventListener("touchend", e => handleTouchZone(e, false, false), { passive: false });
+  touchRight.addEventListener("touchcancel", e => handleTouchZone(e, false, false), { passive: false });
+  touchRight.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "touch") handleTouchZone(e, false, true);
+  });
+  touchRight.addEventListener("pointerup", e => {
+    if (e.pointerType !== "touch") handleTouchZone(e, false, false);
+  });
+}
 
-/* Game Over Modal Tap to Restart */
+/* Static Restart Button & Game Over Tap */
 if (gameOverEl) {
   gameOverEl.addEventListener("touchstart", e => {
     if (dead) {
@@ -804,7 +772,7 @@ if (restartBtn) {
 /* Adjust hint text for touch screens */
 const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 if (isTouchDevice && startHint) {
-  startHint.textContent = "TAP SCREEN OR BUTTONS TO PLAY";
+  startHint.textContent = "TAP RIGHT TO JUMP • TAP LEFT TO DUCK";
 }
 
 
