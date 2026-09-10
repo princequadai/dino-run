@@ -9,6 +9,8 @@
   >
 
   <meta name="theme-color" content="#12151e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <title>Dino Run — Mobile Arcade</title>
 
@@ -16,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css?v=2.1">
+  <link rel="stylesheet" href="style.css?v=2.2">
 </head>
 
 <body>
@@ -43,10 +45,10 @@
     </header>
 
     <div class="hint-bar" id="startHint">
-      TAP SCREEN OR PRESS SPACE TO START
+      TAP SCREEN OR BUTTONS TO PLAY
     </div>
 
-    <section class="game-shell" aria-label="Dino endless runner">
+    <section class="game-shell" id="gameShell" aria-label="Dino endless runner">
 
       <canvas id="gameCanvas"></canvas>
 
@@ -90,7 +92,7 @@
 
   </main>
 
-  <script src="game.js?v=2.1"></script>
+  <script src="game.js?v=2.2"></script>
 
 </body>
 </html>

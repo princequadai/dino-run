@@ -6,6 +6,7 @@
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const gameShell = document.getElementById("gameShell");
 
 const scoreEl = document.getElementById("score");
 const hiScoreEl = document.getElementById("hiScore");
@@ -157,7 +158,9 @@ const H = 320;
 const GROUND_Y = 258;
 
 function resizeCanvas() {
-  const rect = canvas.getBoundingClientRect();
+  if (!canvas || !gameShell) return;
+
+  const rect = gameShell.getBoundingClientRect();
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   canvas.width = Math.round(rect.width * dpr);
@@ -176,6 +179,7 @@ function resizeCanvas() {
 }
 
 window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", () => setTimeout(resizeCanvas, 100));
 resizeCanvas();
 
 
@@ -301,7 +305,7 @@ function jump() {
     dino.vy = JUMP_VELOCITY;
     dino.duck = false;
     playJumpSound();
-    vibrate(15);
+    vibrate(12);
   }
 }
 
@@ -698,40 +702,59 @@ window.addEventListener("keyup", event => {
   }
 });
 
-/* Canvas Pointer / Touch & Swipe */
+/* Canvas Touch & Swipe */
 let touchStartY = 0;
 let touchStartX = 0;
 
-canvas.addEventListener("pointerdown", event => {
+function handleCanvasDown(e) {
   initAudio();
   if (dead || !started) {
     reset();
     return;
   }
 
-  touchStartX = event.clientX;
-  touchStartY = event.clientY;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  touchStartX = clientX;
+  touchStartY = clientY;
 
   jump();
+}
+
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  handleCanvasDown(e);
+}, { passive: false });
+
+canvas.addEventListener("pointerdown", e => {
+  if (e.pointerType !== "touch") {
+    handleCanvasDown(e);
+  }
 });
 
-canvas.addEventListener("pointerup", event => {
-  const deltaY = event.clientY - touchStartY;
-  const deltaX = event.clientX - touchStartX;
+function handleCanvasUp(e) {
+  const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+  const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+  const deltaY = clientY - touchStartY;
+  const deltaX = clientX - touchStartX;
 
   /* Swipe Down to Duck */
   if (deltaY > 35 && Math.abs(deltaY) > Math.abs(deltaX)) {
     setDuck(true);
     setTimeout(() => setDuck(false), 450);
   }
-});
+}
 
-/* Mobile Buttons */
+canvas.addEventListener("touchend", handleCanvasUp, { passive: true });
+
+/* Mobile Control Buttons */
 function bindMobileButton(btn, onDown, onUp) {
   if (!btn) return;
 
   const handleDown = (e) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     e.stopPropagation();
     initAudio();
     btn.classList.add("active");
@@ -739,22 +762,37 @@ function bindMobileButton(btn, onDown, onUp) {
   };
 
   const handleUp = (e) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     e.stopPropagation();
     btn.classList.remove("active");
     if (onUp) onUp();
   };
 
-  btn.addEventListener("pointerdown", handleDown, { passive: false });
-  btn.addEventListener("pointerup", handleUp, { passive: false });
-  btn.addEventListener("pointercancel", handleUp, { passive: false });
-  btn.addEventListener("pointerleave", handleUp, { passive: false });
+  btn.addEventListener("touchstart", handleDown, { passive: false });
+  btn.addEventListener("touchend", handleUp, { passive: false });
+  btn.addEventListener("touchcancel", handleUp, { passive: false });
+
+  btn.addEventListener("pointerdown", e => {
+    if (e.pointerType !== "touch") handleDown(e);
+  });
+  btn.addEventListener("pointerup", e => {
+    if (e.pointerType !== "touch") handleUp(e);
+  });
 }
 
 bindMobileButton(mobileJumpBtn, () => jump(), null);
 bindMobileButton(mobileDuckBtn, () => setDuck(true), () => setDuck(false));
 
-/* Static Restart Button Handler */
+/* Game Over Modal Tap to Restart */
+if (gameOverEl) {
+  gameOverEl.addEventListener("touchstart", e => {
+    if (dead) {
+      if (e.cancelable) e.preventDefault();
+      reset();
+    }
+  }, { passive: false });
+}
+
 if (restartBtn) {
   restartBtn.addEventListener("click", e => {
     e.preventDefault();
@@ -763,7 +801,7 @@ if (restartBtn) {
   });
 }
 
-/* Adjust hint text based on touch capability */
+/* Adjust hint text for touch screens */
 const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 if (isTouchDevice && startHint) {
   startHint.textContent = "TAP SCREEN OR BUTTONS TO PLAY";
@@ -777,3 +815,4 @@ if (isTouchDevice && startHint) {
 hiScoreEl.textContent = String(highScore).padStart(5, "0");
 updateScore();
 draw();
+setTimeout(resizeCanvas, 50);

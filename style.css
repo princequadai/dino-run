@@ -1,7 +1,9 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 html,
@@ -16,7 +18,7 @@ body {
   font-family: 'Outfit', sans-serif;
   overflow: hidden;
   overscroll-behavior: none;
-  touch-action: manipulation;
+  touch-action: none;
 }
 
 
@@ -33,12 +35,12 @@ body {
   justify-content: space-between;
 
   padding:
-    max(10px, env(safe-area-inset-top))
-    max(12px, env(safe-area-inset-right))
-    max(10px, env(safe-area-inset-bottom))
-    max(12px, env(safe-area-inset-left));
+    max(8px, env(safe-area-inset-top))
+    max(10px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom))
+    max(10px, env(safe-area-inset-left));
 
-  gap: 8px;
+  gap: 6px;
 }
 
 
@@ -49,10 +51,10 @@ body {
   align-items: center;
   justify-content: space-between;
 
-  background: rgba(30, 37, 54, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 10px 16px;
+  background: rgba(30, 37, 54, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 8px 14px;
 
   backdrop-filter: blur(12px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -63,7 +65,7 @@ body {
   align-items: center;
   gap: 8px;
   font-family: 'Press Start 2P', monospace;
-  font-size: clamp(10px, 3vw, 13px);
+  font-size: clamp(10px, 3.2vw, 13px);
   color: #3b82f6;
   text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
 }
@@ -105,7 +107,7 @@ body {
 
 .hint-bar {
   font-family: 'Press Start 2P', monospace;
-  font-size: clamp(8px, 2.2vw, 10px);
+  font-size: clamp(8px, 2.4vw, 10px);
   text-align: center;
   color: rgba(255, 255, 255, 0.65);
   letter-spacing: 0.5px;
@@ -123,9 +125,9 @@ body {
   flex: 1;
   position: relative;
   width: 100%;
-  min-height: 240px;
+  min-height: 250px;
 
-  border-radius: 16px;
+  border-radius: 14px;
   overflow: hidden;
 
   background: #fafafa;
@@ -269,14 +271,14 @@ canvas {
 
 .mobile-controls {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  margin-top: 2px;
+  height: clamp(64px, 16vw, 76px);
 }
 
 .mobile-control {
   flex: 1;
-  height: clamp(62px, 15vw, 74px);
+  height: 100%;
 
   display: flex;
   align-items: center;
@@ -287,7 +289,7 @@ canvas {
   border: 2px solid rgba(255, 255, 255, 0.2);
 
   font-family: 'Press Start 2P', monospace;
-  font-size: clamp(12px, 3.5vw, 15px);
+  font-size: clamp(12px, 3.6vw, 15px);
 
   user-select: none;
   touch-action: none;
@@ -322,7 +324,56 @@ canvas {
 }
 
 
-/* DESKTOP OPTIMIZATIONS */
+/* LANDSCAPE MODE OPTIMIZATIONS FOR MOBILE */
+
+@media (orientation: landscape) and (max-height: 550px) {
+  .wrap {
+    height: 100svh;
+    padding: 4px 8px;
+    gap: 4px;
+    position: relative;
+  }
+
+  .hud {
+    padding: 4px 10px;
+    border-radius: 8px;
+  }
+
+  .hint-bar {
+    display: none;
+  }
+
+  .game-shell {
+    flex: 1;
+    min-height: 180px;
+    border-radius: 10px;
+  }
+
+  .mobile-controls {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    pointer-events: none;
+    margin-top: 0;
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 100%;
+  }
+
+  .mobile-control {
+    pointer-events: auto;
+    width: 110px;
+    height: 54px;
+    border-radius: 14px;
+    font-size: 12px;
+    opacity: 0.88;
+  }
+}
+
+
+/* DESKTOP BREAKPOINT */
 
 @media (min-width: 769px) {
   .wrap {
@@ -338,6 +389,6 @@ canvas {
 
   .mobile-controls {
     max-width: 480px;
-    margin: 12px auto 0;
+    margin: 8px auto 0;
   }
 }
