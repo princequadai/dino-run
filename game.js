@@ -96,8 +96,8 @@ function playMilestoneSound() {
     const gain = audioCtx.createGain();
 
     osc.type = "sine";
-    osc.frequency.setValueAtTime(523.25, now); // C5
-    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+    osc.frequency.setValueAtTime(523.25, now);
+    osc.frequency.setValueAtTime(659.25, now + 0.08);
 
     gain.gain.setValueAtTime(0.15, now);
     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
@@ -243,31 +243,6 @@ function updateScore() {
 
 
 /* =================================
-   MOVING RESTART BUTTON
-================================= */
-
-let restartMoveInterval = null;
-
-function moveRestartButton() {
-  if (!gameOverEl || gameOverEl.classList.contains("hidden")) return;
-
-  const gameOverBox = gameOverEl.getBoundingClientRect();
-  const btnW = restartBtn.offsetWidth || 140;
-  const btnH = restartBtn.offsetHeight || 48;
-
-  const maxX = Math.max(10, gameOverBox.width - btnW - 30);
-  const maxY = Math.max(10, gameOverBox.height - btnH - 30);
-
-  const x = Math.floor(Math.random() * maxX) + 15;
-  const y = Math.floor(Math.random() * maxY) + 15;
-
-  restartBtn.style.position = "absolute";
-  restartBtn.style.left = `${x}px`;
-  restartBtn.style.top = `${y}px`;
-}
-
-
-/* =================================
    RESET
 ================================= */
 
@@ -275,13 +250,6 @@ function reset() {
   initAudio();
   gameOverSound.pause();
   gameOverSound.currentTime = 0;
-
-  clearInterval(restartMoveInterval);
-  restartMoveInterval = null;
-
-  restartBtn.style.position = "";
-  restartBtn.style.left = "";
-  restartBtn.style.top = "";
 
   score = 0;
   lastMilestone = 0;
@@ -327,7 +295,7 @@ function jump() {
     return;
   }
 
-  /* Can jump if touching or very close to ground */
+  /* Can jump if touching ground */
   if (dino.y >= GROUND_Y - dino.h - 2) {
     dino.vy = JUMP_VELOCITY;
     dino.duck = false;
@@ -415,11 +383,6 @@ function die() {
 
   playGameOverSound();
   vibrate([50, 40, 50]);
-
-  clearInterval(restartMoveInterval);
-  moveRestartButton();
-
-  restartMoveInterval = setInterval(moveRestartButton, 280);
 
   dino.duck = false;
 
@@ -789,23 +752,19 @@ function bindMobileButton(btn, onDown, onUp) {
 bindMobileButton(mobileJumpBtn, () => jump(), null);
 bindMobileButton(mobileDuckBtn, () => setDuck(true), () => setDuck(false));
 
-/* Moving Restart Button Handlers */
+/* Static Restart Button Handler */
 if (restartBtn) {
   restartBtn.addEventListener("click", e => {
     e.preventDefault();
     e.stopPropagation();
     reset();
   });
-
-  restartBtn.addEventListener("pointerenter", () => {
-    if (dead) moveRestartButton();
-  });
 }
 
 /* Adjust hint text based on touch capability */
 const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 if (isTouchDevice && startHint) {
-  startHint.textContent = "TAP CANVAS OR BUTTONS TO PLAY";
+  startHint.textContent = "TAP SCREEN OR BUTTONS TO PLAY";
 }
 
 

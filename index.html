@@ -5,13 +5,16 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0,
-    maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
   >
 
-  <meta name="theme-color" content="#f7f7f7">
+  <meta name="theme-color" content="#12151e">
 
-  <title>Dino Run</title>
+  <title>Dino Run — Mobile Arcade</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
 </head>
@@ -21,56 +24,47 @@
   <main class="wrap">
 
     <header class="hud">
-
-      <div class="hint" id="startHint">
-        SPACE / ↑ TO JUMP • ↓ TO DUCK
+      <div class="logo-title">
+        <span class="dino-icon">🦖</span>
+        <span class="app-name">DINO RUN</span>
       </div>
 
       <div class="scores">
+        <div class="score-badge hi-badge">
+          <span class="label">HI</span>
+          <span class="val" id="hiScore">00000</span>
+        </div>
 
-        <span>
-          HI <b id="hiScore">00000</b>
-        </span>
-
-        <span>
-          SC <b id="score">00000</b>
-        </span>
-
+        <div class="score-badge cur-badge">
+          <span class="label">SCORE</span>
+          <span class="val" id="score">00000</span>
+        </div>
       </div>
-
     </header>
 
-    <section
-      class="game-shell"
-      aria-label="Dino endless runner"
-    >
+    <div class="hint-bar" id="startHint">
+      TAP SCREEN OR PRESS SPACE TO START
+    </div>
+
+    <section class="game-shell" aria-label="Dino endless runner">
 
       <canvas id="gameCanvas"></canvas>
 
       <div id="gameOver" class="game-over hidden">
-
-        <div class="game-over-title">
-          GAME OVER
+        <div class="game-over-card">
+          <div class="game-over-title">GAME OVER</div>
+          <div class="game-over-score">
+            FINAL SCORE <span id="finalScore">00000</span>
+          </div>
+          <button id="restartBtn" type="button">
+            <span class="btn-icon">↻</span> PLAY AGAIN
+          </button>
         </div>
-
-        <div class="game-over-score">
-          SCORE
-          <b id="finalScore">00000</b>
-        </div>
-
-        <button id="restartBtn" type="button">
-          ↻ RESTART
-        </button>
-
       </div>
 
     </section>
 
-    <div
-      id="mobileControls"
-      class="mobile-controls"
-      aria-label="Touch controls"
-    >
+    <div id="mobileControls" class="mobile-controls" aria-label="Touch controls">
 
       <button
         id="mobileDuckBtn"
@@ -78,7 +72,8 @@
         type="button"
         aria-label="Hold to duck"
       >
-        ⬇ DUCK
+        <span class="control-arrow">⬇</span>
+        <span class="control-text">DUCK</span>
       </button>
 
       <button
@@ -87,7 +82,8 @@
         type="button"
         aria-label="Jump"
       >
-        ⬆ JUMP
+        <span class="control-arrow">⬆</span>
+        <span class="control-text">JUMP</span>
       </button>
 
     </div>
@@ -98,4 +94,3 @@
 
 </body>
 </html>
-```
