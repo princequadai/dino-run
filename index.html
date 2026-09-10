@@ -12,7 +12,7 @@
 
   <title>Dino Run</title>
 
-  <link rel="stylesheet" href="style.css?v=3.0">
+  <link rel="stylesheet" href="style.css?v=4.0">
 </head>
 
 <body>
@@ -20,43 +20,34 @@
   <main class="wrap">
 
     <header class="hud">
-      <div class="hint" id="startHint">
-        TAP RIGHT TO JUMP • TAP LEFT TO DUCK
-      </div>
-
+      <div class="hint" id="startHint">TAP RIGHT TO JUMP • LEFT TO DUCK</div>
       <div class="scores">
         <span>HI <b id="hiScore">00000</b></span>
         <span><b id="score">00000</b></span>
       </div>
     </header>
 
-    <section class="game-shell" id="gameShell" aria-label="Dino endless runner">
+    <section class="game-shell" id="gameShell">
 
       <canvas id="gameCanvas"></canvas>
 
       <div id="gameOver" class="game-over hidden">
-        <div class="game-over-content">
-          <div class="game-over-title">G A M E   O V E R</div>
-          <button id="restartBtn" type="button" aria-label="Restart game">
-            ↻
-          </button>
-        </div>
+        <div class="game-over-title">G A M E   O V E R</div>
+        <button id="restartBtn" type="button" aria-label="Restart">
+          ↻
+        </button>
       </div>
 
       <div id="touchOverlay" class="touch-overlay">
-        <div id="touchLeft" class="touch-zone touch-left">
-          <span class="zone-label">DUCK</span>
-        </div>
-        <div id="touchRight" class="touch-zone touch-right">
-          <span class="zone-label">JUMP</span>
-        </div>
+        <div id="touchLeft" class="touch-zone"></div>
+        <div id="touchRight" class="touch-zone"></div>
       </div>
 
     </section>
 
   </main>
 
-  <script src="game.js?v=3.0"></script>
+  <script src="game.js?v=4.0"></script>
 
 </body>
 </html>

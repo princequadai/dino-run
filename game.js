@@ -11,7 +11,6 @@ const gameShell = document.getElementById("gameShell");
 const scoreEl = document.getElementById("score");
 const hiScoreEl = document.getElementById("hiScore");
 const gameOverEl = document.getElementById("gameOver");
-const finalScoreEl = document.getElementById("finalScore");
 const restartBtn = document.getElementById("restartBtn");
 const startHint = document.getElementById("startHint");
 
@@ -170,7 +169,6 @@ function resizeCanvas() {
   const scaleY = (dpr * rect.height) / H;
 
   ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-
   ctx.imageSmoothingEnabled = false;
 }
 
@@ -200,10 +198,8 @@ let speed = 360;
 let spawnDistance = 480;
 let groundOffset = 0;
 let cloudOffset = 0;
-let nightBlend = 0;
 
 let obstacles = [];
-let particles = [];
 
 
 /* =================================
@@ -258,11 +254,9 @@ function reset() {
   groundOffset = 0;
   cloudOffset = 0;
   obstacles = [];
-  particles = [];
   dead = false;
   started = true;
   running = true;
-  nightBlend = 0;
 
   dino.y = GROUND_Y - dino.h;
   dino.vy = 0;
@@ -296,7 +290,6 @@ function jump() {
     return;
   }
 
-  /* Can jump if touching ground */
   if (dino.y >= GROUND_Y - dino.h - 2) {
     dino.vy = JUMP_VELOCITY;
     dino.duck = false;
@@ -313,7 +306,6 @@ function setDuck(value) {
   if (value) {
     dino.duck = true;
 
-    /* Fast-drop physics if in mid-air */
     if (dino.y < GROUND_Y - dino.h - 2) {
       dino.vy = Math.max(dino.vy, 750);
     } else {
@@ -390,22 +382,10 @@ function die() {
   highScore = Math.max(highScore, Math.floor(score));
   localStorage.setItem("dinoHighScore", highScore);
 
-  finalScoreEl.textContent = String(Math.floor(score)).padStart(5, "0");
   hiScoreEl.textContent = String(highScore).padStart(5, "0");
 
   if (restartBtn) restartBtn.removeAttribute("style");
   gameOverEl.classList.remove("hidden");
-
-  /* Impact particles */
-  for (let i = 0; i < 12; i++) {
-    particles.push({
-      x: dino.x + dino.w / 2,
-      y: dino.y + dino.h / 2,
-      vx: (Math.random() - 0.5) * 220,
-      vy: (Math.random() - 0.5) * 220,
-      life: 0.5
-    });
-  }
 }
 
 
@@ -418,7 +398,6 @@ function update(dt) {
 
   score += time * 10;
 
-  /* Score Milestone Sound & Haptics */
   const milestone = Math.floor(score / 100);
   if (milestone > lastMilestone && milestone > 0) {
     lastMilestone = milestone;
@@ -431,10 +410,6 @@ function update(dt) {
   groundOffset = (groundOffset + speed * time) % 40;
   cloudOffset = (cloudOffset + speed * time * 0.12) % (W + 200);
 
-  const shouldNight = Math.floor(score / 700) % 2 === 1;
-  nightBlend += ((shouldNight ? 1 : 0) - nightBlend) * Math.min(1, time * 3);
-
-  /* Dino Physics */
   const currentGravity = dino.duck ? GRAVITY * 2.2 : GRAVITY;
   dino.vy += currentGravity * time;
   dino.y += dino.vy * time;
@@ -447,7 +422,6 @@ function update(dt) {
 
   dino.frame += time * (speed / 45);
 
-  /* Obstacle Spawning */
   spawnDistance -= speed * time;
   if (spawnDistance <= 0) {
     addObstacle();
@@ -455,7 +429,6 @@ function update(dt) {
     spawnDistance = gap;
   }
 
-  /* Move Obstacles */
   for (let i = obstacles.length - 1; i >= 0; i--) {
     const obstacle = obstacles[i];
     obstacle.x -= speed * time;
@@ -466,7 +439,6 @@ function update(dt) {
     }
   }
 
-  /* Collision Detection */
   const dinoBox = {
     x: dino.x + 7,
     y: dino.duck ? dino.y + 18 : dino.y + 5,
@@ -498,19 +470,6 @@ function update(dt) {
     }
   }
 
-  /* Update Particles */
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.x += p.vx * time;
-    p.y += p.vy * time;
-    p.vy += 500 * time;
-    p.life -= time;
-
-    if (p.life <= 0) {
-      particles.splice(i, 1);
-    }
-  }
-
   updateScore();
 }
 
@@ -538,19 +497,13 @@ function drawDino() {
     return;
   }
 
-  /* Body */
   pixelRect(x + 13, y + 17, 25, 30);
-  /* Head */
   pixelRect(x + 23, y + 7, 23, 23);
-  /* Snout */
   pixelRect(x + 40, y + 14, 12, 7);
-  /* Tail */
   pixelRect(x + 4, y + 31, 14, 7);
   pixelRect(x + 8, y + 27, 8, 8);
-  /* Eye */
   pixelRect(x + 26, y + 7, 5, 5, "#fff");
 
-  /* Legs */
   const step = Math.floor(dino.frame) % 2;
   if (step === 0) {
     pixelRect(x + 15, y + 45, 7, 13);
@@ -609,26 +562,12 @@ function drawCloud(c) {
 }
 
 function drawBackground() {
-  const b = nightBlend;
-
-  ctx.fillStyle = `rgb(${250 - b * 208}, ${250 - b * 208}, ${246 - b * 190})`;
+  ctx.fillStyle = "#fafafa";
   ctx.fillRect(0, 0, W, H);
 
   clouds.forEach(drawCloud);
 
-  if (nightBlend > 0.1) {
-    ctx.fillStyle = "#eee";
-    ctx.beginPath();
-    ctx.arc(760, 62, 18, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = `rgba(250, 250, 246, ${nightBlend})`;
-    ctx.beginPath();
-    ctx.arc(768, 56, 17, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.strokeStyle = "#333";
+  ctx.strokeStyle = "#535353";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, GROUND_Y);
@@ -650,12 +589,6 @@ function draw() {
   drawBackground();
   obstacles.forEach(o => (o.type === "bird" ? drawBird(o) : drawCactus(o)));
   drawDino();
-
-  particles.forEach(p => {
-    ctx.globalAlpha = Math.max(0, p.life * 2);
-    pixelRect(p.x, p.y, 3, 3, "#555");
-  });
-  ctx.globalAlpha = 1;
 }
 
 function loop(now) {
@@ -712,17 +645,12 @@ function handleTouchZone(e, isLeft, isDown) {
 
     if (isLeft) {
       setDuck(true);
-      if (touchLeft) touchLeft.classList.add("active");
     } else {
       jump();
-      if (touchRight) touchRight.classList.add("active");
     }
   } else {
     if (isLeft) {
       setDuck(false);
-      if (touchLeft) touchLeft.classList.remove("active");
-    } else {
-      if (touchRight) touchRight.classList.remove("active");
     }
   }
 }
@@ -772,7 +700,7 @@ if (restartBtn) {
 /* Adjust hint text for touch screens */
 const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 if (isTouchDevice && startHint) {
-  startHint.textContent = "TAP RIGHT TO JUMP • TAP LEFT TO DUCK";
+  startHint.textContent = "TAP RIGHT TO JUMP • LEFT TO DUCK";
 }
 
 
