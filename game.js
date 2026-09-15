@@ -110,6 +110,8 @@ function playMilestoneSound() {
 }
 
 function playGameOverSound() {
+  return;
+  
   initAudio();
   try {
     gameOverSound.currentTime = 0;
